@@ -1,0 +1,39 @@
+{
+  "name": "i18n-toolkit-feishu",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc"
+  },
+  "bin": {
+    "i18n-toolkit": "bin.js"
+  },
+  "files": [
+    "/dist",
+    "bin.js"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JinYuSha0/i18n-toolkit-feishu",
+    "baseUrl": "https://github.com/JinYuSha0/i18n-toolkit-feishu"
+  },
+  "keywords": [
+    "i18n"
+  ],
+  "author": {
+    "name": "Soul",
+    "email": "a1009943858@gmail.com"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.7.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "querystring": "^0.2.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
+  }
+}
