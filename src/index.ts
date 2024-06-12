@@ -16,6 +16,7 @@ interface BitableRecordsResponse {
   data: {
     has_more: boolean;
     total: number;
+    page_token: string;
     items: { fields: Record<string, string>; id: string; record_id: string }[];
   };
 }
@@ -69,19 +70,30 @@ class FeiShuClient {
     }
   }
 
+  public async loadBitable(
+    map: Record<string, Record<string, string>>,
+    page_token?: string
+  ) {
+    const res = await this.getBitableRecords(page_token);
+    res.data.items.forEach((row, idx) => {
+      const key = row.fields["key"];
+      if (!key) return;
+      this.config.langues.forEach((lang) => {
+        if (!row.fields[lang]) return;
+        map[lang][key] = row.fields[lang];
+      });
+    });
+    console.log("\x1b[32m", `Load ${page_token ?? "first"} page success`);
+    if (res.data.page_token) {
+      await this.loadBitable(map, res.data.page_token);
+    }
+  }
+
   public async generateFiles() {
     try {
-      const res = await this.getBitableRecords();
       const map: Record<string, Record<string, string>> = {};
       this.config.langues.forEach((lang) => (map[lang] = {}));
-      res.data.items.forEach((row, idx) => {
-        const key = row.fields["key"];
-        if (!key) return;
-        this.config.langues.forEach((lang) => {
-          if (!row.fields[lang]) return;
-          map[lang][key] = row.fields[lang];
-        });
-      });
+      await this.loadBitable(map);
       createDirIfNotExists(OUT_PUT_DIR);
       Object.keys(map).forEach((lang) => {
         writeJsonFile(
@@ -118,13 +130,16 @@ class FeiShuClient {
     return res.data;
   }
 
-  private async getBitableRecords(): Promise<BitableRecordsResponse> {
+  private async getBitableRecords(
+    page_token?: string
+  ): Promise<BitableRecordsResponse> {
     const field_names = `[${["key", ...this.config.langues]
       .map((val) => `"${val}"`)
       .join(",")}]`;
     const query = querystring.encode({
       field_names,
       page_size: 500,
+      page_token,
     });
     const res = await axios.get(
       `https://open.feishu.cn/open-apis/bitable/v1/apps/${this.config.app_token}/tables/${this.config.table_id}/records?${query}`,
