@@ -29,6 +29,7 @@ interface Config {
   langues: string[];
   outputDir: string; // 输出目录
   suffix?: string; // 文件路径
+  fieldFileNameMap?: Record<string, string> // 字段名映射文件名（避免字段存在中文）
 }
 
 const args = process.argv.slice(2);
@@ -97,7 +98,7 @@ class FeiShuClient {
       createDirIfNotExists(OUT_PUT_DIR);
       Object.keys(map).forEach((lang) => {
         writeJsonFile(
-          path.join(OUT_PUT_DIR, `${lang}.${this.config.suffix ?? ""}json`),
+          path.join(OUT_PUT_DIR, `${this.config.fieldFileNameMap?.[lang] ?? lang}.${this.config.suffix ?? ""}json`),
           map[lang]
         );
       });
