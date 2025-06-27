@@ -28,8 +28,9 @@ interface Config {
   table_id: string; // 多维表格数据表的唯一标识符
   langues: string[];
   outputDir: string; // 输出目录
+  keyField?: string; // 主键字段名
   suffix?: string; // 文件路径
-  fieldFileNameMap?: Record<string, string> // 字段名映射文件名（避免字段存在中文）
+  fieldFileNameMap?: Record<string, string>; // 字段名映射文件名（避免字段存在中文）
 }
 
 const args = process.argv.slice(2);
@@ -77,7 +78,7 @@ class FeiShuClient {
   ) {
     const res = await this.getBitableRecords(page_token);
     res.data.items.forEach((row, idx) => {
-      const key = row.fields["key"];
+      const key = row.fields[this.config.keyField ?? "key"];
       if (!key) return;
       this.config.langues.forEach((lang) => {
         if (!row.fields[lang]) return;
@@ -98,7 +99,12 @@ class FeiShuClient {
       createDirIfNotExists(OUT_PUT_DIR);
       Object.keys(map).forEach((lang) => {
         writeJsonFile(
-          path.join(OUT_PUT_DIR, `${this.config.fieldFileNameMap?.[lang] ?? lang}.${this.config.suffix ?? ""}json`),
+          path.join(
+            OUT_PUT_DIR,
+            `${this.config.fieldFileNameMap?.[lang] ?? lang}.${
+              this.config.suffix ?? ""
+            }json`
+          ),
           map[lang]
         );
       });
@@ -134,7 +140,10 @@ class FeiShuClient {
   private async getBitableRecords(
     page_token?: string
   ): Promise<BitableRecordsResponse> {
-    const field_names = `[${["key", ...this.config.langues]
+    const field_names = `[${[
+      this.config.keyField ?? "key",
+      ...this.config.langues,
+    ]
       .map((val) => `"${val}"`)
       .join(",")}]`;
     const query = querystring.encode({
