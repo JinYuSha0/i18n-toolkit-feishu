@@ -77,12 +77,16 @@ class FeiShuClient {
     page_token?: string
   ) {
     const res = await this.getBitableRecords(page_token);
+    if (res.code !== 0) {
+      console.error(res);
+      return;
+    }
     res.data.items.forEach((row, idx) => {
       const key = row.fields[this.config.keyField ?? "key"];
       if (!key) return;
       this.config.langues.forEach((lang) => {
         if (!row.fields[lang]) return;
-        map[lang][key] = row.fields[lang];
+        map[lang][key.replace(/\s/g, "")] = row.fields[lang];
       });
     });
     console.log("\x1b[32m", `Load ${page_token ?? "first"} page success`);
