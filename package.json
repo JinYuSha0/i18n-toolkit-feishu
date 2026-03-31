@@ -1,8 +1,13 @@
 {
   "name": "i18n-toolkit-feishu",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./plugin": "./dist/plugin.js"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc"
@@ -11,8 +16,9 @@
     "i18n-toolkit": "bin.js"
   },
   "files": [
-    "/dist",
-    "bin.js"
+    "dist",
+    "bin.js",
+    "i18n.config.schema.json"
   ],
   "repository": {
     "type": "git",

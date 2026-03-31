@@ -5,6 +5,7 @@
     "target": "ES6", // 编译后的 JavaScript 版本
     "module": "commonjs", // 模块系统
     "strict": true, // 启用所有严格类型检查选项
+    "declaration": true, // 生成 .d.ts 声明文件，供外部类型引用
     "esModuleInterop": true, // 允许对 ES 模块进行互操作性处理
     "skipLibCheck": true // 跳过库的类型检查
   },

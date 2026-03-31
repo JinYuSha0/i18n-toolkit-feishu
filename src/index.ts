@@ -1,7 +1,15 @@
+import type { Config } from "./config";
+import type { I18nPlugin } from "./plugin";
 import path from "path";
 import axios from "axios";
 import querystring from "querystring";
 import { createDirIfNotExists, writeJsonFile } from "./helper";
+import {
+  loadPlugins,
+  runFilterPlugins,
+  runNormalPlugins,
+  collectPluginExtraFields,
+} from "./plugin";
 
 interface AccessTokenResponse {
   code: number;
@@ -21,23 +29,11 @@ interface BitableRecordsResponse {
   };
 }
 
-interface Config {
-  app_id: string;
-  app_secret: string;
-  app_token: string; // 多维表格的唯一标识符
-  table_id: string; // 多维表格数据表的唯一标识符
-  langues: string[];
-  outputDir: string; // 输出目录
-  keyField?: string; // 主键字段名
-  suffix?: string; // 文件路径
-  fieldFileNameMap?: Record<string, string>; // 字段名映射文件名（避免字段存在中文）
-}
-
 const args = process.argv.slice(2);
 const [configPath] = args;
 
 const CONFIG_PATH = configPath
-  ? path.join(process.cwd(), configPath)
+  ? path.resolve(process.cwd(), configPath)
   : path.join(process.cwd(), "i18n.config.json");
 
 // https://test-d1qa1t4gmrzy.feishu.cn/base/Sf6KbG60yaRBhoskKVNcsZ1Nnv1?table=tblbcZ3QDtPApMCt&view=vewJverQkB
@@ -48,10 +44,14 @@ const OUT_PUT_DIR = path.join(process.cwd(), config.outputDir);
 
 class FeiShuClient {
   config: Config;
+  plugins: I18nPlugin[];
+  pluginExtraFields: string[];
   tenant_access_token: string = "";
 
   constructor() {
     this.config = this.getConfig();
+    this.plugins = loadPlugins(this.config.pluginFile, CONFIG_PATH);
+    this.pluginExtraFields = collectPluginExtraFields(this.plugins);
   }
 
   public async init() {
@@ -67,39 +67,48 @@ class FeiShuClient {
     } catch (err) {
       console.log(
         "\x1B[31m",
-        "Get token failed, cause: " + (err as Error).message
+        "Get token failed, cause: " + (err as Error).message,
       );
     }
   }
 
   public async loadBitable(
-    map: Record<string, Record<string, string>>,
-    page_token?: string
+    records: Record<string, string>[],
+    page_token?: string,
   ) {
     const res = await this.getBitableRecords(page_token);
     if (res.code !== 0) {
       console.error(res);
       return;
     }
-    res.data.items.forEach((row, idx) => {
-      const key = row.fields[this.config.keyField ?? "key"];
-      if (!key) return;
-      this.config.langues.forEach((lang) => {
-        if (!row.fields[lang]) return;
-        map[lang][key.replace(/\s/g, "")] = row.fields[lang];
-      });
-    });
+    for (const row of res.data.items) {
+      const shouldKeep = await runFilterPlugins(this.plugins, row.fields);
+      if (!shouldKeep) continue;
+      records.push(row.fields);
+    }
     console.log("\x1b[32m", `Load ${page_token ?? "first"} page success`);
     if (res.data.page_token) {
-      await this.loadBitable(map, res.data.page_token);
+      await this.loadBitable(records, res.data.page_token);
     }
   }
 
   public async generateFiles() {
     try {
+      const records: Record<string, string>[] = [];
+      await this.loadBitable(records);
+      await runNormalPlugins(this.plugins, records);
+
       const map: Record<string, Record<string, string>> = {};
       this.config.langues.forEach((lang) => (map[lang] = {}));
-      await this.loadBitable(map);
+      records.forEach((record) => {
+        const key = record[this.config.keyField ?? "key"];
+        if (!key) return;
+        this.config.langues.forEach((lang) => {
+          if (!(lang in record)) return;
+          map[lang][key.replace(/\s/g, "")] = record[lang];
+        });
+      });
+
       createDirIfNotExists(OUT_PUT_DIR);
       Object.keys(map).forEach((lang) => {
         writeJsonFile(
@@ -107,16 +116,16 @@ class FeiShuClient {
             OUT_PUT_DIR,
             `${this.config.fieldFileNameMap?.[lang] ?? lang}.${
               this.config.suffix ?? ""
-            }json`
+            }json`,
           ),
-          map[lang]
+          map[lang],
         );
       });
       console.log("\x1b[32m", "Generate file success");
     } catch (err) {
       console.log(
         "\x1B[31m",
-        "Get bitable records failed, cause: " + (err as Error).message
+        "Get bitable records failed, cause: " + (err as Error).message,
       );
     }
   }
@@ -136,20 +145,23 @@ class FeiShuClient {
         headers: {
           "Content-Type": "application/json; charset=utf-8",
         },
-      }
+      },
     );
     return res.data;
   }
 
   private async getBitableRecords(
-    page_token?: string
+    page_token?: string,
   ): Promise<BitableRecordsResponse> {
     const field_names = `[${[
       this.config.keyField ?? "key",
       ...this.config.langues,
+      ...this.pluginExtraFields,
     ]
+      .filter((field, idx, arr) => arr.indexOf(field) === idx)
       .map((val) => `"${val}"`)
       .join(",")}]`;
+
     const query = querystring.encode({
       field_names,
       page_size: 500,
@@ -162,7 +174,7 @@ class FeiShuClient {
           "Content-Type": "application/json; charset=utf-8",
           Authorization: this.tenant_access_token,
         },
-      }
+      },
     );
     return res.data;
   }

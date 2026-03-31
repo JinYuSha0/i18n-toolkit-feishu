@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/JinYuSha0/i18n-toolkit-feishu/i18n.config.schema.json",
+  "title": "i18n-toolkit-feishu Config",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "app_id",
+    "app_secret",
+    "app_token",
+    "table_id",
+    "langues",
+    "outputDir"
+  ],
+  "properties": {
+    "app_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "飞书应用 app_id"
+    },
+    "app_secret": {
+      "type": "string",
+      "minLength": 1,
+      "description": "飞书应用 app_secret"
+    },
+    "app_token": {
+      "type": "string",
+      "minLength": 1,
+      "description": "多维表格 app token"
+    },
+    "table_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "多维表格 table id"
+    },
+    "langues": {
+      "type": "array",
+      "description": "语言字段列表（保持与表格字段一致）",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "outputDir": {
+      "type": "string",
+      "minLength": 1,
+      "description": "输出目录"
+    },
+    "keyField": {
+      "type": "string",
+      "minLength": 1,
+      "description": "主键字段名，默认 key"
+    },
+    "suffix": {
+      "type": "string",
+      "description": "文件名后缀，不包含 json"
+    },
+    "fieldFileNameMap": {
+      "type": "object",
+      "description": "字段名到文件名映射",
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "pluginFile": {
+      "type": "string",
+      "minLength": 1,
+      "description": "插件文件路径，默认导出 I18nPlugin[]"
+    }
+  }
+}
